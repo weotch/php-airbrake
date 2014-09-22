@@ -11,7 +11,7 @@ The best way to install the library is by using [Composer](http://getcomposer.or
 ``` javascript
 { 
   "require": {
-    "nodrew/php-airbrake": "dev-master"
+    "dbtlr/php-airbrake": "dev-master"
   }
 }
 ```
@@ -32,11 +32,9 @@ The preferred method for this to be used is via error and exception handlers, so
 
 ```php
 <?php
-require_once 'php-airbrake/src/Airbrake/EventHandler.php';
+require_once 'vendor/autoload.php';
 Airbrake\EventHandler::start('[your api key]');
 ```
-
-Note that you may omit the `require_once` if you are autoloading (as described in Installation).
 
 Optionally, you may pass a second parameter as TRUE to the start() method, in order to enable the logging of warning level messages as well. This is disabled by default, as it may considered too noisy, depending on the quality of the code base. There is also a third options array that may be passed, which will load many of the more common configuration options. These options are located below.
 
@@ -47,8 +45,7 @@ If calling the class directly and not through an exception handler, it would be 
 
 ```php
 <?php
-require_once 'php-airbrake/src/Airbrake/Client.php';
-require_once 'php-airbrake/src/Airbrake/Configuration.php';
+require_once 'vendor/autoload.php';
 
 $apiKey  = '[your api key]'; // This is required
 $options = array(); // This is optional
@@ -79,9 +76,7 @@ In order to speed up polling time, it may be desirable to pair Airbrake with a R
 
 ```php
 <?php
-
-require_once 'php-airbrake/src/Airbrake/EventHandler.php';
-require_once 'php-resque/lib/Resque.php';
+require_once 'vendor/autoload.php';
 
 Airbrake\EventHandler::start('[your api key]', true, array('queue' => 'airbrake'));
 ```
@@ -89,7 +84,7 @@ Airbrake\EventHandler::start('[your api key]', true, array('queue' => 'airbrake'
 In order to start the requested queue, simply run this command.
 
 ```
-QUEUE=airbrake APP_INCLUDE=php-airbrake/src/Airbrake/Client.php php php-resque/resque.php
+QUEUE=airbrake APP_INCLUDE=vendor/autoload.php vendor/bin/resque
 ```
 
 This will start the queue running properly.
@@ -109,3 +104,4 @@ Configuration Options
 - **url** - The main URL that was requested.
 - **hostname** - The hostname that was requested.
 - **queue** - Optional - the name of the Resque queue to use.
+- **secure** - Optional - Boolean that allows you to define if you want to hit the secure Airbrake endpoint.

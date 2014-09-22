@@ -1,8 +1,6 @@
 <?php
 namespace Airbrake;
 
-require_once 'Record.php';
-
 use Airbrake\Exception as AirbrakeException;
 
 /**
@@ -10,10 +8,10 @@ use Airbrake\Exception as AirbrakeException;
  *
  * Loads via the inherited Record class methods.
  *
- * @package		Airbrake
- * @author		Drew Butler <drew@abstracting.me>
- * @copyright	(c) 2011 Drew Butler
- * @license		http://www.opensource.org/licenses/mit-license.php
+ * @package    Airbrake
+ * @author     Drew Butler <drew@dbtlr.com>
+ * @copyright  (c) 2011-2013 Drew Butler
+ * @license    http://www.opensource.org/licenses/mit-license.php
  */
 class Configuration extends Record
 {
@@ -30,7 +28,10 @@ class Configuration extends Record
     protected $_url;
     protected $_hostname;
     protected $_queue;
-    protected $_apiEndPoint  = 'http://api.airbrake.io/notifier_api/v2/notices';
+    protected $_secure = false;
+    protected $_host = 'api.airbrake.io';
+    protected $_resource = '/notifier_api/v2/notices';
+    protected $_apiEndPoint;
 
     /**
      * Load the given data array to the record.
@@ -49,17 +50,19 @@ class Configuration extends Record
      */
     protected function initialize()
     {
-        if (!$this->serverData) {
+        if ($this->serverData === null) {
             $this->serverData = (array) $_SERVER;
         }
-        if (!$this->getData) {
+
+        if ($this->getData === null) {
             $this->getData = (array) $_GET;
         }
-        if (!$this->postData) {
+
+        if ($this->postData === null) {
             $this->postData = (array) $_POST;
         }
 
-        if (!$this->sessionData && isset($_SESSION)) {
+        if ($this->sessionData === null && isset($_SESSION)) {
             $this->sessionData = (array) $_SESSION;
         }
 
@@ -74,6 +77,9 @@ class Configuration extends Record
         if (!$this->hostname) {
             $this->hostname = isset($this->serverData['HTTP_HOST']) ? $this->serverData['HTTP_HOST'] : 'No Host';
         }
+
+        $protocol = $this->secure ? 'https' : 'http';
+        $this->apiEndPoint = $this->apiEndPoint ?: $protocol.'://'.$this->host.$this->resource;
     }
 
     /**

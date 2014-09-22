@@ -3,16 +3,13 @@ namespace Airbrake;
 
 use Exception;
 
-require_once 'Client.php';
-require_once 'Configuration.php';
-
 /**
  * Airbrake EventHandler class.
  *
- * @package		Airbrake
- * @author		Drew Butler <drew@abstracting.me>
- * @copyright	(c) 2011 Drew Butler
- * @license		http://www.opensource.org/licenses/mit-license.php
+ * @package    Airbrake
+ * @author     Drew Butler <drew@dbtlr.com>
+ * @copyright  (c) 2011-2013 Drew Butler
+ * @license    http://www.opensource.org/licenses/mit-license.php
  */
 class EventHandler
 {
@@ -20,35 +17,51 @@ class EventHandler
      * The singleton instance
      */
     protected static $instance = null;
-    protected $airbrakeClient = null;
+    protected $airbrakeClient  = null;
     protected $notifyOnWarning = null;
 
-    protected $warningErrors = array ( \E_NOTICE            => 'Notice',
-                                       \E_STRICT            => 'Strict',
-                                       \E_USER_WARNING      => 'User Warning',
-                                       \E_USER_NOTICE       => 'User Notice',
-                                       \E_DEPRECATED        => 'Deprecated',
-                                       \E_WARNING           => 'Warning',
-                                       \E_USER_DEPRECATED   => 'User Deprecated',
-                                       \E_CORE_WARNING      => 'Core Warning',
-                                       \E_COMPILE_WARNING   => 'Compile Warning',
-                                       \E_RECOVERABLE_ERROR => 'Recoverable Error' );
+    protected $warningErrors = array(\E_NOTICE            => 'Notice',
+                                     \E_STRICT            => 'Strict',
+                                     \E_USER_WARNING      => 'User Warning',
+                                     \E_USER_NOTICE       => 'User Notice',
+                                     \E_DEPRECATED        => 'Deprecated',
+                                     \E_WARNING           => 'Warning',
+                                     \E_USER_DEPRECATED   => 'User Deprecated',
+                                     \E_CORE_WARNING      => 'Core Warning',
+                                     \E_COMPILE_WARNING   => 'Compile Warning',
+                                     \E_RECOVERABLE_ERROR => 'Recoverable Error' );
 
-    protected $fatalErrors = array ( \E_ERROR             => 'Error',
-                                     \E_PARSE             => 'Parse',
-                                     \E_COMPILE_ERROR     => 'Compile Error',
-                                     \E_CORE_ERROR        => 'Core Error',
-                                     \E_USER_ERROR        => 'User Error' );
-    
+    protected $fatalErrors = array(\E_ERROR             => 'Error',
+                                   \E_PARSE             => 'Parse',
+                                   \E_COMPILE_ERROR     => 'Compile Error',
+                                   \E_CORE_ERROR        => 'Core Error',
+                                   \E_USER_ERROR        => 'User Error' );
+
     /**
      * Build with the Airbrake client class.
      *
      * @param Airbrake\Client $client
-     */                              
+     */
     public function __construct(Client $client, $notifyOnWarning)
     {
         $this->notifyOnWarning = $notifyOnWarning;
         $this->airbrakeClient = $client;
+    }
+
+    /**
+     * @return self
+     */
+    public static function getInstance()
+    {
+        return self::$instance;
+    }
+
+    /**
+     * @return Airbrake\Client
+     */
+    public function getClient()
+    {
+        return $this->airbrakeClient;
     }
 
     /**
@@ -63,10 +76,10 @@ class EventHandler
     {
         if ( !isset(self::$instance)) {
             $config = new Configuration($apiKey, $options);
-    
+
             $client = new Client($config);
             self::$instance = new self($client, $notifyOnWarning);
-    
+
             set_error_handler(array(self::$instance, 'onError'));
             set_exception_handler(array(self::$instance, 'onException'));
             register_shutdown_function(array(self::$instance, 'onShutdown'));
@@ -88,7 +101,7 @@ class EventHandler
 
         self::$instance = null;
     }
- 
+
     /**
      * Catches standard PHP style errors
      *
@@ -107,16 +120,16 @@ class EventHandler
             return true;
         }
 
-        $backtrace = debug_backtrace();
-        array_shift( $backtrace );
-
         if (isset($this->fatalErrors[$type])) {
-            throw new Exception(sprintf('A PHP error occurred (%s). %s', $this->fatalErrors[$type], $message));
+            throw new Exception($message);
         }
 
-        if ($this->notifyOnWarning && isset ( $this->warningErrors[$type])) {
-            $message = sprintf('A PHP warning occurred (%s). %s', $this->warningErrors[$type], $message);
-            $this->airbrakeClient->notifyOnError($message);
+        if ($this->notifyOnWarning && isset ($this->warningErrors[$type])) {
+            // Make sure we pass in the current backtrace, minus this function call.
+            $backtrace = debug_backtrace();
+            array_shift($backtrace);
+
+            $this->airbrakeClient->notifyOnError($message, $backtrace);
             return true;
         }
 
@@ -137,7 +150,7 @@ class EventHandler
 
         return true;
     }
-    
+
     /**
      * Handles the PHP shutdown event.
      *
@@ -167,10 +180,16 @@ class EventHandler
             return;
         }
 
-        $message = '[SHUTDOWN] %s  File: %s  Line: %d';
+        // Build a fake backtrace, so we at least can show where we came from.
+        $backtrace = array(
+            array(
+                'file' => $error['file'],
+                'line' => $error['line'],
+                'function' => '',
+                'args' => array(),
+            )
+        );
 
-        $message = sprintf($message, $error['message'], $error['file'], $error['line']);
-
-        $this->airbrakeClient->notifyOnError($message);
+        $this->airbrakeClient->notifyOnError('[Improper Shutdown] '.$error['message'], $backtrace);
     }
 }
